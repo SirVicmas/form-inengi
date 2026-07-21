@@ -15,7 +15,9 @@ app.get('/api/health', (req, res) => {
 
 const prisma = require('./config/db');
 
+const authRoutes = require('./routes/auth');
 
+app.use('/api/auth', authRoutes);
 
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
