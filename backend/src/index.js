@@ -19,6 +19,9 @@ app.use('/api/events', eventRoutes);
 const registrationRoutes = require('./routes/registrations');
 app.use('/api/events', registrationRoutes);
 
+const ticketRoutes = require('./routes/tickets');
+app.use('/api/tickets', ticketRoutes);
+
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
 });
