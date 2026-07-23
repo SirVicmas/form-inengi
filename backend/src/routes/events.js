@@ -4,6 +4,19 @@ const requireAdmin = require('../middleware/auth');
 
 const router = express.Router();
 
+// PROTECTED — dashboard: see every event, including drafts and closed events
+router.get('/admin/all', requireAdmin, async (req, res) => {
+    try {
+        const events = await prisma.event.findMany({
+            orderBy: [{ eventDate: 'asc' }, { createdAt: 'desc' }],
+        });
+        res.json(events);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch events' });
+    }
+});
+
 // PUBLIC — anyone can list published events (the public site uses this)
 router.get('/', async (req, res) => {
     const events = await prisma.event.findMany({
@@ -54,6 +67,39 @@ router.post('/', requireAdmin, async (req, res) => {
         }
         console.error(err);
         res.status(500).json({ error: 'Something went wrong creating the event' });
+    }
+});
+
+// PROTECTED — dashboard: update event details or publishing status
+router.patch('/:id', requireAdmin, async (req, res) => {
+    const eventId = Number(req.params.id);
+    if (!Number.isInteger(eventId)) {
+        return res.status(400).json({ error: 'Event id must be a valid number' });
+    }
+
+    const { title, slug, description, venue, eventDate, capacity, status } = req.body;
+    const allowedStatuses = ['draft', 'published', 'closed'];
+    if (status && !allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: 'status must be draft, published, or closed' });
+    }
+
+    const data = {};
+    if (title !== undefined) data.title = title;
+    if (slug !== undefined) data.slug = slug;
+    if (description !== undefined) data.description = description;
+    if (venue !== undefined) data.venue = venue;
+    if (eventDate !== undefined) data.eventDate = eventDate ? new Date(eventDate) : null;
+    if (capacity !== undefined) data.capacity = capacity === null ? null : Number(capacity);
+    if (status !== undefined) data.status = status;
+
+    try {
+        const event = await prisma.event.update({ where: { id: eventId }, data });
+        res.json(event);
+    } catch (err) {
+        if (err.code === 'P2025') return res.status(404).json({ error: 'Event not found' });
+        if (err.code === 'P2002') return res.status(409).json({ error: 'An event with that slug already exists' });
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update event' });
     }
 });
 
